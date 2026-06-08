@@ -1,0 +1,19 @@
+{
+  "name": "phantom-mirror",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-device phone and tablet mirroring desktop app.",
+  "scripts": {
+    "dev": "npm run dev --workspace @phantommirror/desktop",
+    "build": "npm run build --workspace @phantommirror/desktop",
+    "tauri": "npm run tauri --workspace @phantommirror/desktop",
+    "typecheck": "npm run typecheck --workspace @phantommirror/desktop"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "turbo": "^2.5.4"
+  }
+}

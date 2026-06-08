@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.turbo/
+
+apps/*/dist/
+apps/desktop/src-tauri/target/
+
+*.log
+*.local
+.env
+.env.*

@@ -1,0 +1,447 @@
+:root {
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #edf4f7;
+  background: #101316;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --panel: #171b1f;
+  --panel-2: #1d2429;
+  --panel-3: #243039;
+  --line: rgba(255, 255, 255, 0.1);
+  --muted: #9baab2;
+  --text: #edf4f7;
+  --accent: #51b89a;
+  --accent-strong: #74d8b8;
+  --danger: #f27d72;
+  --warning: #d8b65f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #101316;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 100vh;
+  padding: 18px;
+  background: #13171a;
+  border-right: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  color: #06100d;
+  background: var(--accent-strong);
+  font-weight: 800;
+}
+
+.brand div,
+.device-row-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.brand span,
+.device-row small,
+.topbar p,
+.device-header span,
+.device-metrics,
+.notice,
+.empty-state p {
+  color: var(--muted);
+}
+
+.wifi-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.wifi-form input {
+  width: 100%;
+  min-width: 0;
+  color: var(--text);
+  background: #0f1214;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.wifi-form button,
+.primary-button,
+.ghost-button,
+.device-toolbar button,
+.segmented button {
+  min-height: 36px;
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--panel-3);
+  cursor: pointer;
+}
+
+.wifi-form button,
+.primary-button {
+  color: #06100d;
+  background: var(--accent-strong);
+  font-weight: 700;
+  padding: 0 14px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.device-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+}
+
+.device-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 12px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.device-row.selected {
+  background: var(--panel-2);
+  border-color: rgba(116, 216, 184, 0.32);
+}
+
+.platform {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  color: var(--accent-strong);
+  background: rgba(116, 216, 184, 0.12);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 99px;
+  background: var(--muted);
+}
+
+.status-dot.ready,
+.status-dot.streaming {
+  background: var(--accent-strong);
+}
+
+.status-dot.connecting {
+  background: var(--warning);
+}
+
+.status-dot.error {
+  background: var(--danger);
+}
+
+.ghost-button {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--line);
+}
+
+.workspace {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 0;
+}
+
+.topbar p {
+  margin: 4px 0 0;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #0f1214;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.segmented button {
+  min-width: 62px;
+  background: transparent;
+  text-transform: capitalize;
+}
+
+.segmented button.active {
+  color: #06100d;
+  background: var(--accent-strong);
+  font-weight: 700;
+}
+
+.notice {
+  padding: 10px 12px;
+  background: rgba(216, 182, 95, 0.12);
+  border: 1px solid rgba(216, 182, 95, 0.28);
+  border-radius: 8px;
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-height: 460px;
+  text-align: center;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+}
+
+.empty-state h2 {
+  margin: 0 0 8px;
+}
+
+.empty-state p {
+  max-width: 430px;
+  margin: 0;
+}
+
+.device-grid {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  gap: 14px;
+}
+
+.layout-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.layout-focus {
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+}
+
+.layout-focus .device-window:first-child {
+  grid-row: span 2;
+}
+
+.layout-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.device-window {
+  display: flex;
+  min-width: 0;
+  min-height: 360px;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.device-window.focused {
+  border-color: rgba(116, 216, 184, 0.55);
+  box-shadow: 0 0 0 1px rgba(116, 216, 184, 0.16);
+}
+
+.device-header,
+.device-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+}
+
+.device-header {
+  border-bottom: 1px solid var(--line);
+}
+
+.device-header div:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.device-header strong,
+.device-header span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.device-metrics {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.screen-frame {
+  position: relative;
+  flex: 1;
+  min-height: 240px;
+  background: #050708;
+}
+
+.stream-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.touch-overlay {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.touch-ripple {
+  position: absolute;
+  width: 38px;
+  height: 38px;
+  margin: -19px 0 0 -19px;
+  border: 2px solid var(--accent-strong);
+  border-radius: 99px;
+  animation: ripple 180ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  from {
+    opacity: 0.9;
+    transform: scale(0.55);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+.view-only {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 6px 8px;
+  color: #06100d;
+  background: var(--warning);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.device-toolbar {
+  border-top: 1px solid var(--line);
+}
+
+.device-toolbar button {
+  padding: 0 12px;
+}
+
+.status-label {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.status-label.streaming,
+.status-label.ready {
+  color: var(--accent-strong);
+}
+
+.status-label.error {
+  color: var(--danger);
+}
+
+@media (max-width: 860px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .topbar,
+  .topbar-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .layout-focus {
+    grid-template-columns: 1fr;
+  }
+}
