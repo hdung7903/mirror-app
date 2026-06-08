@@ -1,5 +1,7 @@
 import type { Device } from '../types';
 import { useDeviceStore } from '../stores/deviceStore';
+import { rotateDevice } from '../services/adb.service';
+import { screenshotAllDevices } from '../services/canvasRegistry';
 
 type TopBarProps = {
   selectedDevice?: Device;
@@ -37,6 +39,17 @@ export function TopBar({ selectedDevice }: TopBarProps) {
         </div>
         <button className="primary-button" type="button" onClick={() => void scan()} disabled={busy}>
           {busy ? 'Scanning' : 'Scan'}
+        </button>
+        <button className="primary-button" type="button" onClick={() => screenshotAllDevices()}>
+          Screenshot All
+        </button>
+        <button
+          className="ghost-button compact"
+          type="button"
+          disabled={!selectedDevice}
+          onClick={() => selectedDevice && void rotateDevice(selectedDevice.serial)}
+        >
+          Rotate
         </button>
       </div>
     </header>

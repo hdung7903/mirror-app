@@ -21,9 +21,50 @@ export type Device = {
   battery?: number;
   status: MirrorStatus;
   streamPort?: number;
+  codec?: 'h264' | 'h265';
   latencyMs?: number;
   fps?: number;
   viewOnly?: boolean;
+  rtspUrl?: string;
+  airplaySessionId?: string;
+};
+
+export type DeviceInfo = {
+  serial: string;
+  battery?: number;
+  androidVersion?: string;
+  storageFree?: string;
+};
+
+export type DeviceChangedEvent = {
+  serial: string;
+  status: 'connected' | 'disconnected';
+};
+
+export type WifiDevice = {
+  ip: string;
+  port: number;
+  name: string;
+};
+
+export type AirPlaySession = {
+  rtspUrl: string;
+  sessionId: string;
+  deviceName: string;
+};
+
+export type UxPlayStatus = {
+  installed: boolean;
+  path?: string;
+  version?: string;
+};
+
+export type IosMirrorInfo = {
+  sessionId: string;
+  wsPort: number;
+  rtpPort: number;
+  codec: 'h264' | 'h265';
+  deviceName: string;
 };
 
 export type TouchPoint = {

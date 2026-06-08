@@ -22,10 +22,17 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
   background: #101316;
 }
 
@@ -41,14 +48,18 @@ button {
 .shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
-  min-height: 100vh;
+  width: 100%;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  min-height: 100vh;
+  min-height: 0;
+  overflow: hidden;
   padding: 18px;
   background: #13171a;
   border-right: 1px solid var(--line);
@@ -106,6 +117,7 @@ button {
 }
 
 .wifi-form button,
+.wifi-actions button,
 .primary-button,
 .ghost-button,
 .device-toolbar button,
@@ -125,6 +137,98 @@ button {
   padding: 0 14px;
 }
 
+.wifi-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sidebar-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: #0f1214;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sidebar-tabs button {
+  min-height: 34px;
+  color: var(--text);
+  background: transparent;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.sidebar-tabs button.active {
+  color: #06100d;
+  background: var(--accent-strong);
+  font-weight: 800;
+}
+
+.wifi-actions button {
+  background: var(--panel-3);
+}
+
+.scan-progress {
+  height: 6px;
+  overflow: hidden;
+  background: #0f1214;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+}
+
+.scan-progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent-strong);
+  transition: width 180ms ease;
+}
+
+.wifi-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wifi-results > strong {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.wifi-results button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  color: var(--text);
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.wifi-results span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.wifi-results small {
+  color: var(--muted);
+}
+
+.wifi-results em {
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-style: normal;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -140,11 +244,13 @@ button:disabled {
 
 .device-row {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 12px;
+  grid-template-columns: 34px minmax(0, 1fr) minmax(44px, auto);
   align-items: center;
   gap: 10px;
   width: 100%;
+  min-width: 0;
   padding: 10px;
+  overflow: hidden;
   text-align: left;
   color: var(--text);
   background: transparent;
@@ -171,6 +277,7 @@ button:disabled {
 }
 
 .status-dot {
+  flex: 0 0 auto;
   width: 10px;
   height: 10px;
   border-radius: 99px;
@@ -190,18 +297,142 @@ button:disabled {
   background: var(--danger);
 }
 
+.device-status {
+  display: flex;
+  min-width: 0;
+  max-width: 74px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  justify-self: end;
+}
+
+.device-status-text {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.pair-dialog,
+.extended-dialog {
+  display: grid;
+  width: min(360px, 100%);
+  gap: 10px;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.pair-dialog input,
+.extended-dialog input {
+  min-height: 38px;
+  color: var(--text);
+  background: #0f1214;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+}
+
+.extended-dialog label {
+  display: grid;
+  gap: 6px;
+}
+
+.extended-dialog label span,
+.extended-dialog p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pair-dialog div,
+.extended-dialog div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pair-dialog button,
+.extended-dialog button {
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--text);
+  background: var(--panel-3);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.pair-dialog button[type='submit'],
+.extended-dialog button[type='submit'] {
+  color: #06100d;
+  background: var(--accent-strong);
+  font-weight: 800;
+}
+
+.ios-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.ios-panel input,
+.ios-panel select {
+  min-height: 38px;
+  color: var(--text);
+  background: #0f1214;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+}
+
+.ios-panel button {
+  min-height: 36px;
+  color: var(--text);
+  background: var(--panel-3);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.ios-panel p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .ghost-button {
   width: 100%;
   background: transparent;
   border: 1px solid var(--line);
 }
 
+.ghost-button.compact {
+  width: auto;
+  padding: 0 12px;
+}
+
 .workspace {
   display: flex;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
   gap: 14px;
   padding: 18px;
+  overflow: hidden;
 }
 
 .topbar {
@@ -209,6 +440,7 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  flex: 0 0 auto;
 }
 
 .topbar h1 {
@@ -278,15 +510,19 @@ button:disabled {
   display: grid;
   flex: 1;
   min-height: 0;
+  min-width: 0;
   gap: 14px;
+  overflow: hidden;
 }
 
 .layout-grid {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
 }
 
 .layout-focus {
   grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  grid-auto-rows: minmax(0, 1fr);
 }
 
 .layout-focus .device-window:first-child {
@@ -295,12 +531,13 @@ button:disabled {
 
 .layout-single {
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .device-window {
   display: flex;
   min-width: 0;
-  min-height: 360px;
+  min-height: 0;
   flex-direction: column;
   overflow: hidden;
   background: var(--panel);
@@ -320,6 +557,7 @@ button:disabled {
   justify-content: space-between;
   gap: 10px;
   padding: 10px;
+  flex: 0 0 auto;
 }
 
 .device-header {
@@ -327,6 +565,7 @@ button:disabled {
 }
 
 .device-header div:first-child {
+  position: relative;
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -346,10 +585,37 @@ button:disabled {
   font-size: 12px;
 }
 
+.device-info-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  display: none;
+  min-width: 230px;
+  gap: 4px;
+  padding: 10px;
+  color: var(--text);
+  background: #0f1214;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.device-header div:first-child:hover .device-info-popover {
+  display: flex;
+}
+
+.device-info-popover span {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .screen-frame {
   position: relative;
   flex: 1;
-  min-height: 240px;
+  min-height: 0;
+  min-width: 0;
   background: #050708;
 }
 
@@ -357,6 +623,7 @@ button:disabled {
   display: block;
   width: 100%;
   height: 100%;
+  object-fit: contain;
 }
 
 .touch-overlay {
@@ -364,6 +631,55 @@ button:disabled {
   inset: 0;
   cursor: crosshair;
   touch-action: none;
+}
+
+.stream-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 18px;
+  text-align: center;
+  background: rgba(5, 7, 8, 0.72);
+}
+
+.stream-overlay.error {
+  color: var(--danger);
+}
+
+.stream-overlay.instructions {
+  background: rgba(5, 7, 8, 0.54);
+}
+
+.stream-overlay.instructions span {
+  color: var(--muted);
+}
+
+.stream-overlay button {
+  min-height: 36px;
+  padding: 0 14px;
+  color: #06100d;
+  background: var(--accent-strong);
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255, 255, 255, 0.22);
+  border-top-color: var(--accent-strong);
+  border-radius: 50%;
+  animation: spin 780ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .touch-ripple {
@@ -424,6 +740,39 @@ button:disabled {
   color: var(--danger);
 }
 
+.extended-hint {
+  padding: 8px 10px;
+  color: var(--accent-strong);
+  background: rgba(116, 216, 184, 0.08);
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.extended-window {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #101316;
+}
+
+.extended-window canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+.extended-status {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  padding: 8px 10px;
+  color: var(--text);
+  background: rgba(15, 18, 20, 0.84);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
 @media (max-width: 860px) {
   .shell {
     grid-template-columns: 1fr;
@@ -431,6 +780,7 @@ button:disabled {
 
   .sidebar {
     min-height: auto;
+    max-height: 40vh;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }

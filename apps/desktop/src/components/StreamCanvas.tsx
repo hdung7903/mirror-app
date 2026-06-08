@@ -1,16 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { RefObject, useEffect } from 'react';
 import type { Device } from '../types';
 
 type StreamCanvasProps = {
   device: Device;
+  canvasRef: RefObject<HTMLCanvasElement>;
+  streamState: 'idle' | 'connecting' | 'ready' | 'error';
 };
 
-export function StreamCanvas({ device }: StreamCanvasProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
+export function StreamCanvas({ device, canvasRef, streamState }: StreamCanvasProps) {
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) {
+    if (!canvas || streamState === 'ready') {
       return;
     }
 
@@ -49,8 +49,12 @@ export function StreamCanvas({ device }: StreamCanvasProps) {
     ctx.fillStyle = 'rgba(255,255,255,0.82)';
     ctx.font = `${14 * dpr}px Inter, system-ui, sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(device.status === 'streaming' ? 'Waiting for H.264 stream' : device.name, canvas.width / 2, canvas.height / 2);
-  }, [device.name, device.status, device.streamPort]);
+    ctx.fillText(
+      streamState === 'connecting' ? `Connecting to ${device.name}...` : device.name,
+      canvas.width / 2,
+      canvas.height / 2,
+    );
+  }, [canvasRef, device.name, streamState]);
 
   return <canvas ref={canvasRef} className="stream-canvas" />;
 }
