@@ -600,8 +600,7 @@ async fn read_storage_free(serial: &str) -> Option<String> {
 
     output
         .lines()
-        .filter(|line| !line.trim().is_empty())
-        .next_back()
+        .rfind(|line| !line.trim().is_empty())
         .and_then(|line| line.split_whitespace().nth(3))
         .map(ToString::to_string)
 }
