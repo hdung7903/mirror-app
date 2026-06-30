@@ -2,6 +2,7 @@ export type DeviceMeta = {
   deviceName: string;
   width: number;
   height: number;
+  codec?: StreamCodec;
 };
 
 export type TouchAction = 'down' | 'move' | 'up';
@@ -27,6 +28,7 @@ type DecoderEvents = {
 
 type ScrcpyMetaMessage = DeviceMeta & {
   type: 'meta';
+  codec?: StreamCodec;
 };
 
 const PACKET_HEADER_BYTES = 12;
@@ -249,6 +251,7 @@ export class H264Decoder {
       deviceName: parsed.deviceName,
       width: parsed.width,
       height: parsed.height,
+      codec: parsed.codec === 'h265' ? 'h265' : 'h264',
     };
 
     this.meta = meta;

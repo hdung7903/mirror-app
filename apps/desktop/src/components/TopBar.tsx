@@ -5,9 +5,10 @@ import { screenshotAllDevices } from '../services/canvasRegistry';
 
 type TopBarProps = {
   selectedDevice?: Device;
+  onOpenSettings: () => void;
 };
 
-export function TopBar({ selectedDevice }: TopBarProps) {
+export function TopBar({ selectedDevice, onOpenSettings }: TopBarProps) {
   const layout = useDeviceStore((state) => state.layout);
   const setLayout = useDeviceStore((state) => state.setLayout);
   const scan = useDeviceStore((state) => state.scan);
@@ -50,6 +51,9 @@ export function TopBar({ selectedDevice }: TopBarProps) {
           onClick={() => selectedDevice && void rotateDevice(selectedDevice.serial)}
         >
           Rotate
+        </button>
+        <button className="ghost-button compact icon-button" type="button" onClick={onOpenSettings} aria-label="Settings">
+          ⚙
         </button>
       </div>
     </header>

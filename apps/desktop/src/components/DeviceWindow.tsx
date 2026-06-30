@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
 import { useDeviceStore } from '../stores/deviceStore';
 import type { Device, DeviceChangedEvent, DeviceInfo } from '../types';
 import {
   getDeviceInfo,
   isDeviceConnected,
+  pullClipboardText,
+  pushClipboardText,
+  pushFileToDevice,
   restorePortraitIfHome,
   startMirror,
   startStreamBridge,
@@ -13,6 +16,7 @@ import {
 import { registerDeviceCanvas } from '../services/canvasRegistry';
 import { openExtendedDisplayWindow, startExtendedDisplay } from '../services/extendedDisplay.service';
 import { H264Decoder, type DeviceMeta } from '../h264decoder';
+import { useSettingsStore } from '../stores/settingsStore';
 import { StreamCanvas } from './StreamCanvas';
 import { TouchOverlay } from './TouchOverlay';
 
@@ -37,6 +41,8 @@ export function DeviceWindow({ device, focused }: DeviceWindowProps) {
   const [info, setInfo] = useState<DeviceInfo | undefined>();
   const [meta, setMeta] = useState<DeviceMeta | undefined>();
   const [extendedInfo, setExtendedInfo] = useState<string | undefined>();
+  const [deviceNotice, setDeviceNotice] = useState<string | undefined>();
+  const [recording, setRecording] = useState(false);
   const [extendedDialogOpen, setExtendedDialogOpen] = useState(false);
   const [extendedHost, setExtendedHost] = useState(defaultExtendedHost());
   const [extendedStarting, setExtendedStarting] = useState(false);
@@ -47,6 +53,12 @@ export function DeviceWindow({ device, focused }: DeviceWindowProps) {
     decodedFrames: 0,
     resolution: { w: device.resolution?.width ?? 0, h: device.resolution?.height ?? 0 },
   });
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const showFpsCounter = useSettingsStore((state) => state.interface.showFpsCounter);
+  const showDeviceInfoOnHover = useSettingsStore((state) => state.interface.showDeviceInfoOnHover);
+  const connectionSettings = useSettingsStore((state) => state.connection);
+  const streamingSettings = useSettingsStore((state) => state.streaming);
 
   const currentResolution = stats.resolution.w > 0 && stats.resolution.h > 0
     ? stats.resolution
@@ -78,6 +90,78 @@ export function DeviceWindow({ device, focused }: DeviceWindowProps) {
     }
   }
 
+  function toggleRecording() {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    if (recording) {
+      mediaRecorderRef.current?.stop();
+      return;
+    }
+
+    const stream = canvas.captureStream(30);
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+      ? 'video/webm;codecs=vp9'
+      : 'video/webm';
+    const recorder = new MediaRecorder(stream, { mimeType });
+    recordedChunksRef.current = [];
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        recordedChunksRef.current.push(event.data);
+      }
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${safeFileName(device.name)}_${timestamp()}.webm`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setRecording(false);
+    };
+    mediaRecorderRef.current = recorder;
+    recorder.start();
+    setRecording(true);
+  }
+
+  async function pushClipboard() {
+    const text = await navigator.clipboard.readText();
+    await pushClipboardText(device.serial, text);
+    setDeviceNotice('Clipboard pushed as input text.');
+  }
+
+  async function pullClipboard() {
+    const text = await pullClipboardText(device.serial);
+    setDeviceNotice(text);
+  }
+
+  async function handleDrop(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    if (device.kind !== 'android') {
+      return;
+    }
+
+    const files = Array.from(event.dataTransfer.files) as Array<File & { path?: string }>;
+    if (files.length === 0) {
+      return;
+    }
+    setDeviceNotice(`Transferring ${files.length} file(s)...`);
+    try {
+      for (const file of files) {
+        if (!file.path) {
+          throw new Error('Dropped file path is not available in this WebView.');
+        }
+        await pushFileToDevice(device.serial, file.path, `/sdcard/Download/${file.name}`);
+      }
+      setDeviceNotice(`Pushed ${files.length} file(s) to /sdcard/Download.`);
+    } catch (error) {
+      setDeviceNotice(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   const cleanupStream = useCallback(async (stopBackend = true) => {
     if (reconnectTimerRef.current) {
       window.clearTimeout(reconnectTimerRef.current);
@@ -104,9 +188,14 @@ export function DeviceWindow({ device, focused }: DeviceWindowProps) {
     if (!userWantsStreamRef.current) {
       return;
     }
+    if (!connectionSettings.autoReconnect) {
+      setStreamState('error');
+      setStreamError(lastStreamErrorRef.current ?? 'Stream disconnected.');
+      return;
+    }
 
     const attempt = reconnectAttemptsRef.current;
-    if (attempt >= 3) {
+    if (attempt >= connectionSettings.reconnectAttempts) {
       setStreamState('error');
       const connected = device.kind === 'ios' || (await isDeviceConnected(device.serial));
       setStreamError(
@@ -131,7 +220,7 @@ export function DeviceWindow({ device, focused }: DeviceWindowProps) {
     reconnectTimerRef.current = window.setTimeout(() => {
       void connectStreamRef.current?.(true);
     }, delay);
-  }, [device.serial]);
+  }, [connectionSettings.autoReconnect, connectionSettings.reconnectAttempts, device.kind, device.serial]);
 
   const connectStream = useCallback(async (isReconnect = false) => {
     const canvas = canvasRef.current;
@@ -158,7 +247,8 @@ export function DeviceWindow({ device, focused }: DeviceWindowProps) {
       if (device.kind === 'ios' && wsPort <= 0) {
         throw new Error('iOS mirror WebSocket port is not available.');
       }
-      const decoder = new H264Decoder(canvas, device.codec ?? 'h264');
+      const decoderCodec = device.codec ?? (device.kind === 'android' && streamingSettings.h265 ? 'h265' : 'h264');
+      const decoder = new H264Decoder(canvas, decoderCodec);
       decoderRef.current = decoder;
       decoder.on('frame', setStats);
       decoder.on('error', (error) => {
@@ -190,7 +280,7 @@ export function DeviceWindow({ device, focused }: DeviceWindowProps) {
     } finally {
       connectingRef.current = false;
     }
-  }, [cleanupStream, device.kind, device.rtspUrl, device.serial, device.viewOnly, scheduleReconnect]);
+  }, [cleanupStream, device.kind, device.serial, device.viewOnly, scheduleReconnect]);
 
   connectStreamRef.current = connectStream;
 
@@ -306,23 +396,30 @@ export function DeviceWindow({ device, focused }: DeviceWindowProps) {
   }, [currentResolution, device.kind, device.serial, streamState]);
 
   return (
-    <article className={`device-window ${focused ? 'focused' : ''}`} onClick={() => select(device.id)}>
+    <article
+      className={`device-window ${focused ? 'focused' : ''} ${recording ? 'recording' : ''}`}
+      onClick={() => select(device.id)}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => void handleDrop(event)}
+    >
       <header className="device-header">
         <div>
           <strong>{device.name}</strong>
           <span>{device.kind === 'ios' ? 'View Only' : resolution}</span>
-          <div className="device-info-popover">
+          <div className={`device-info-popover ${showDeviceInfoOnHover ? '' : 'disabled'}`}>
             <span>Battery: {info?.battery ?? device.battery ?? '--'}%</span>
             <span>Android: {info?.androidVersion ?? device.androidVersion ?? '--'}</span>
             <span>Storage free: {info?.storageFree ?? '--'}</span>
             <span>Serial: {device.serial}</span>
           </div>
         </div>
-        <div className="device-metrics">
-          <span>{stats.fps} fps</span>
-          <span>{stats.packets}/{stats.decodedFrames}</span>
-          <span>{stats.latency ? `${stats.latency} ms` : '-- ms'}</span>
-        </div>
+        {showFpsCounter ? (
+          <div className="device-metrics">
+            <span>{stats.fps} fps</span>
+            <span>{stats.packets}/{stats.decodedFrames}</span>
+            <span>{stats.latency ? `${stats.latency} ms` : '-- ms'}</span>
+          </div>
+        ) : null}
       </header>
 
       <div className="screen-frame">
@@ -368,6 +465,19 @@ export function DeviceWindow({ device, focused }: DeviceWindowProps) {
         <button type="button" disabled>
           Shot
         </button>
+        <button type="button" onClick={toggleRecording}>
+          {recording ? 'Stop' : 'Record'}
+        </button>
+        {device.kind === 'android' ? (
+          <>
+            <button type="button" onClick={() => void pushClipboard()}>
+              Push clipboard
+            </button>
+            <button type="button" onClick={() => void pullClipboard()}>
+              Pull clipboard
+            </button>
+          </>
+        ) : null}
         {device.kind === 'android' ? (
           <button type="button" onClick={() => setExtendedDialogOpen(true)}>
             Extended
@@ -376,6 +486,7 @@ export function DeviceWindow({ device, focused }: DeviceWindowProps) {
         <span className={`status-label ${streamState}`}>{streamState}</span>
       </footer>
       {extendedInfo ? <div className="extended-hint">{extendedInfo}</div> : null}
+      {deviceNotice ? <div className="extended-hint">{deviceNotice}</div> : null}
       {extendedDialogOpen ? (
         <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={() => setExtendedDialogOpen(false)}>
           <form
@@ -415,6 +526,14 @@ export function DeviceWindow({ device, focused }: DeviceWindowProps) {
 async function startAndroidStream(serial: string) {
   const scrcpyPort = await startMirror(serial);
   return startStreamBridge(serial, scrcpyPort);
+}
+
+function safeFileName(value: string) {
+  return value.replace(/[^a-z0-9_-]+/gi, '_').replace(/^_+|_+$/g, '') || 'device';
+}
+
+function timestamp() {
+  return new Date().toISOString().replace(/[:.]/g, '-');
 }
 
 function defaultExtendedHost() {

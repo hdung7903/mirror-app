@@ -15,6 +15,7 @@ type DeviceStore = {
   select: (id: string) => void;
   setLayout: (layout: LayoutMode) => void;
   upsertDevice: (device: Device) => void;
+  reorderDevices: (activeId: string, overId: string) => void;
   remove: (id: string) => void;
 };
 
@@ -145,6 +146,27 @@ export const useDeviceStore = create<DeviceStore>((set, get) => ({
         devices,
         deviceOrder: devices.map((item) => item.id),
         selectedId: device.id,
+      };
+    });
+  },
+
+  reorderDevices(activeId, overId) {
+    if (activeId === overId) {
+      return;
+    }
+    set((state) => {
+      const from = state.devices.findIndex((device) => device.id === activeId);
+      const to = state.devices.findIndex((device) => device.id === overId);
+      if (from < 0 || to < 0) {
+        return state;
+      }
+      const devices = [...state.devices];
+      const [moved] = devices.splice(from, 1);
+      devices.splice(to, 0, moved);
+      persistOrder(devices);
+      return {
+        devices,
+        deviceOrder: devices.map((device) => device.id),
       };
     });
   },

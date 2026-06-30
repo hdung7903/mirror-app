@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, env, path::PathBuf, process::Stdio, time::Duration};
 use tauri::{AppHandle, Emitter};
 use tokio::{
@@ -54,6 +54,15 @@ pub struct DeviceInfo {
 pub struct DeviceChangedEvent {
     serial: String,
     status: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AndroidStreamOptions {
+    video_quality: Option<String>,
+    fps_target: Option<u32>,
+    bitrate_mbps: Option<u32>,
+    h265: Option<bool>,
 }
 
 #[tauri::command]
@@ -132,7 +141,7 @@ pub async fn is_device_connected(serial: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub async fn start_android_mirror(serial: String) -> Result<u16, String> {
+pub async fn start_android_mirror(serial: String, options: Option<AndroidStreamOptions>) -> Result<u16, String> {
     let port = stable_port_for_serial(&serial);
     let _ = adb_owned(vec![
         "-s".to_string(),
@@ -166,12 +175,46 @@ pub async fn start_android_mirror(serial: String) -> Result<u16, String> {
     ])
     .await?;
 
+    let options = options.unwrap_or(AndroidStreamOptions {
+        video_quality: Some("1080p".to_string()),
+        fps_target: Some(60),
+        bitrate_mbps: Some(12),
+        h265: Some(false),
+    });
+    let max_size = match options.video_quality.as_deref() {
+        Some("480p") => "max_size=480",
+        Some("720p") => "max_size=720",
+        Some("native") => "",
+        _ => "max_size=1080",
+    };
+    let fps = options.fps_target.unwrap_or(60).clamp(1, 60);
+    let bitrate = options.bitrate_mbps.unwrap_or(12).clamp(2, 12) * 1_000_000;
+    let codec = if options.h265.unwrap_or(false) { "h265" } else { "h264" };
+    let mut server_args = vec![
+        "CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobile.scrcpy.Server 3.1".to_string(),
+        "tunnel_forward=true".to_string(),
+        "video=true".to_string(),
+        "audio=false".to_string(),
+        "control=true".to_string(),
+        "cleanup=false".to_string(),
+        format!("max_fps={fps}"),
+        format!("video_bit_rate={bitrate}"),
+        format!("video_codec={codec}"),
+        "send_device_meta=true".to_string(),
+        "send_frame_meta=true".to_string(),
+        "send_dummy_byte=false".to_string(),
+    ];
+    if !max_size.is_empty() {
+        server_args.push(max_size.to_string());
+    }
+    let server_command = server_args.join(" ");
+
     adb_command()
         .args([
             "-s",
             &serial,
             "shell",
-            "CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobile.scrcpy.Server 3.1 tunnel_forward=true video=true audio=false control=true cleanup=false max_size=1080 max_fps=60 video_bit_rate=12000000 video_codec=h264 send_device_meta=true send_frame_meta=true send_dummy_byte=false",
+            &server_command,
         ])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -222,6 +265,78 @@ pub async fn send_swipe(
     ])
     .await
     .map(|_| ())
+}
+
+#[tauri::command]
+pub async fn push_clipboard_text(serial: String, text: String) -> Result<(), String> {
+    validate_serial(&serial)?;
+    let escaped = escape_input_text(&text);
+    adb_owned(vec![
+        "-s".to_string(),
+        serial,
+        "shell".to_string(),
+        "input".to_string(),
+        "text".to_string(),
+        escaped,
+    ])
+    .await
+    .map(|_| ())
+}
+
+#[tauri::command]
+pub async fn pull_clipboard_text(serial: String) -> Result<String, String> {
+    validate_serial(&serial)?;
+    adb_owned(vec![
+        "-s".to_string(),
+        serial,
+        "shell".to_string(),
+        "service".to_string(),
+        "call".to_string(),
+        "clipboard".to_string(),
+        "2".to_string(),
+    ])
+    .await
+}
+
+#[tauri::command]
+pub async fn push_file(serial: String, local_path: String, remote_path: String) -> Result<String, String> {
+    validate_serial(&serial)?;
+    if local_path.trim().is_empty() {
+        return Err("Local file path is empty.".to_string());
+    }
+    let remote = if remote_path.trim().is_empty() {
+        "/sdcard/Download/".to_string()
+    } else {
+        remote_path
+    };
+    let output = adb_owned(vec![
+        "-s".to_string(),
+        serial.clone(),
+        "push".to_string(),
+        local_path,
+        remote.clone(),
+    ])
+    .await?;
+
+    let scan_target = if remote.ends_with('/') {
+        remote
+    } else {
+        remote.clone()
+    };
+    let _ = adb_owned(vec![
+        "-s".to_string(),
+        serial,
+        "shell".to_string(),
+        "am".to_string(),
+        "broadcast".to_string(),
+        "-a".to_string(),
+        "android.intent.action.MEDIA_SCANNER_SCAN_FILE".to_string(),
+        "-d".to_string(),
+        format!("file://{scan_target}"),
+    ])
+    .await;
+
+    Ok(output)
 }
 
 #[tauri::command]
@@ -585,6 +700,18 @@ fn validate_serial(serial: &str) -> Result<(), String> {
         return Err("Device serial is empty.".to_string());
     }
     Ok(())
+}
+
+fn escape_input_text(text: &str) -> String {
+    text.chars()
+        .flat_map(|ch| match ch {
+            ' ' => "%s".chars().collect::<Vec<_>>(),
+            '&' | '<' | '>' | ';' | '|' | '*' | '~' | '"' | '\'' | '\\' | '(' | ')' => {
+                vec!['\\', ch]
+            }
+            _ => vec![ch],
+        })
+        .collect()
 }
 
 fn adb_command() -> Command {

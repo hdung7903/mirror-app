@@ -9,3 +9,24 @@ apps/desktop/src-tauri/target/
 *.local
 .env
 .env.*
+
+# Scrcpy server binary (downloaded at build time)
+tools/scrcpy-server/scrcpy-server.jar
+
+# UxPlay binaries (downloaded/built at build time)
+# Windows (flat layout — current)
+tools/uxplay/*.exe
+tools/uxplay/*.dll
+# Platform-specific subdirs
+tools/uxplay/win32-x64/
+tools/uxplay/linux-x64/
+tools/uxplay/linux-arm64/
+tools/uxplay/darwin-x64/
+tools/uxplay/darwin-arm64/
+
+# Tauri gen folder (auto-generated)
+apps/desktop/src-tauri/gen/
+
+# OS
+.DS_Store
+Thumbs.db

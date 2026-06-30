@@ -9,6 +9,7 @@ import type {
   UxPlayStatus,
   WifiDevice,
 } from '../types';
+import { useSettingsStore } from '../stores/settingsStore';
 
 const isTauri = () => Boolean('__TAURI_INTERNALS__' in window);
 
@@ -111,7 +112,16 @@ export async function startMirror(serial: string): Promise<number> {
     return 0;
   }
 
-  return invoke<number>('start_android_mirror', { serial });
+  const { streaming } = useSettingsStore.getState();
+  return invoke<number>('start_android_mirror', {
+    serial,
+    options: {
+      videoQuality: streaming.videoQuality,
+      fpsTarget: streaming.fpsTarget,
+      bitrateMbps: streaming.bitrateMbps,
+      h265: streaming.h265,
+    },
+  });
 }
 
 export async function startStreamBridge(serial: string, scrcpyTcpPort: number): Promise<number> {
@@ -227,4 +237,28 @@ export async function sendSwipe(serial: string, input: SwipeInput): Promise<void
     y2: Math.round(input.to.y),
     durationMs: input.durationMs,
   });
+}
+
+export async function pushClipboardText(serial: string, text: string): Promise<void> {
+  if (!isTauri() || serial.startsWith('demo-')) {
+    return;
+  }
+
+  await invoke('push_clipboard_text', { serial, text });
+}
+
+export async function pullClipboardText(serial: string): Promise<string> {
+  if (!isTauri() || serial.startsWith('demo-')) {
+    return 'Browser preview clipboard pull is unavailable.';
+  }
+
+  return invoke<string>('pull_clipboard_text', { serial });
+}
+
+export async function pushFileToDevice(serial: string, localPath: string, remotePath = '/sdcard/Download/'): Promise<string> {
+  if (!isTauri() || serial.startsWith('demo-')) {
+    return 'Browser preview file push is unavailable.';
+  }
+
+  return invoke<string>('push_file', { serial, localPath, remotePath });
 }

@@ -492,24 +492,38 @@ async fn bind_free_udp_port() -> Result<u16, String> {
 }
 
 fn find_uxplay_binary(app: &AppHandle) -> Result<PathBuf, String> {
-    let exe = if cfg!(windows) { "uxplay.exe" } else { "uxplay" };
     let platform_dir = os_arch_dir();
+    // Ordered candidate names: standard name first, then platform-specific names
+    let exe_names: &[&str] = if cfg!(windows) {
+        &["uxplay.exe", "uxplay-windows.exe"]
+    } else {
+        &["uxplay"]
+    };
     let mut candidates = Vec::new();
-    if let Ok(resource_dir) = app.path().resource_dir() {
-        candidates.push(resource_dir.join("tools").join("uxplay").join(platform_dir).join(exe));
-    }
-    candidates.push(workspace_path(["tools", "uxplay", platform_dir, exe]));
-    candidates.push(PathBuf::from("tools").join("uxplay").join(platform_dir).join(exe));
+    for exe in exe_names {
+        if let Ok(resource_dir) = app.path().resource_dir() {
+            // With platform subdirectory (expected layout)
+            candidates.push(resource_dir.join("tools").join("uxplay").join(platform_dir).join(exe));
+            // Flat layout (files directly in tools/uxplay/)
+            candidates.push(resource_dir.join("tools").join("uxplay").join(exe));
+        }
+        // With platform subdirectory
+        candidates.push(workspace_path(["tools", "uxplay", platform_dir, exe]));
+        // Flat layout
+        candidates.push(workspace_path(["tools", "uxplay", exe]));
+        candidates.push(PathBuf::from("tools").join("uxplay").join(platform_dir).join(exe));
+        candidates.push(PathBuf::from("tools").join("uxplay").join(exe));
 
-    if let Some(path_binary) = find_on_path(exe) {
-        candidates.push(path_binary);
+        if let Some(path_binary) = find_on_path(exe) {
+            candidates.push(path_binary);
+        }
     }
 
     candidates
         .into_iter()
         .find(|candidate| candidate.exists())
         .and_then(|candidate| candidate.canonicalize().ok())
-        .ok_or_else(|| format!("UxPlay headless binary not found for {platform_dir}. Build it with tools/scripts/build-uxplay."))
+        .ok_or_else(|| format!("UxPlay headless binary not found for {platform_dir}. Place uxplay binary in tools/uxplay/ or tools/uxplay/{platform_dir}/."))
 }
 
 fn find_on_path(exe: &str) -> Option<PathBuf> {

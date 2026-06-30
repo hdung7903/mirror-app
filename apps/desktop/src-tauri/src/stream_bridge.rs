@@ -37,6 +37,7 @@ struct BridgeMeta {
     device_name: String,
     width: u32,
     height: u32,
+    codec: String,
 }
 
 #[tauri::command]
@@ -283,7 +284,7 @@ where
             .try_into()
             .map_err(|_| "Invalid scrcpy height bytes.".to_string())?,
     );
-    if codec_id != "h264" {
+    if codec_id != "h264" && codec_id != "h265" {
         return Err(format!("Unsupported scrcpy video codec: {codec_id}"));
     }
 
@@ -292,6 +293,7 @@ where
         device_name: parse_device_name(&name_buf),
         width,
         height,
+        codec: codec_id,
     })
 }
 

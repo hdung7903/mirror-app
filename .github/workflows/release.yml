@@ -1,0 +1,208 @@
+name: 🚀 Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Windows — NSIS Setup Wizard
+  # ─────────────────────────────────────────────
+  build-windows:
+    name: 🪟 Windows NSIS Setup
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+          cache-on-failure: true
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Download scrcpy server
+        # Android streaming server — non-fatal if download fails
+        run: node tools/scripts/download-scrcpy-server.mjs
+        continue-on-error: true
+
+      - name: Download UxPlay prebuilt (Windows)
+        # iOS AirPlay binary — non-fatal, app works without it (iOS tab shows warning)
+        run: node tools/scripts/download-uxplay-prebuilt.mjs
+        continue-on-error: true
+
+      - name: Build NSIS installer
+        run: npx tauri build --bundles nsis
+        working-directory: apps/desktop
+        env:
+          # No code signing — SmartScreen will warn on first run, but app still installs fine
+          TAURI_SIGNING_PRIVATE_KEY: ''
+          NODE_ENV: production
+
+      - name: Locate installer
+        id: find-installer
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Recurse -Filter "*.exe" `
+            "apps/desktop/src-tauri/target/release/bundle/nsis" |
+            Select-Object -First 1
+          echo "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
+          echo "name=$($exe.Name)" >> $env:GITHUB_OUTPUT
+          echo "Found: $($exe.FullName)"
+
+      - name: Upload NSIS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-nsis
+          path: ${{ steps.find-installer.outputs.path }}
+          retention-days: 7
+
+  # ─────────────────────────────────────────────
+  # Ubuntu — .deb package
+  # ─────────────────────────────────────────────
+  build-ubuntu:
+    name: 🐧 Ubuntu .deb Package
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            curl \
+            file \
+            libssl-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libayatana-appindicator3-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+          cache-on-failure: true
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Download scrcpy server
+        run: node tools/scripts/download-scrcpy-server.mjs
+        continue-on-error: true
+
+      - name: Download UxPlay prebuilt (Linux)
+        # Tries to grab prebuilt from FDH2/UxPlay releases — non-fatal
+        run: node tools/scripts/download-uxplay-prebuilt.mjs
+        continue-on-error: true
+
+      - name: Build .deb package
+        run: npx tauri build --bundles deb
+        working-directory: apps/desktop
+        env:
+          NODE_ENV: production
+
+      - name: Locate .deb package
+        id: find-deb
+        run: |
+          DEB=$(find apps/desktop/src-tauri/target/release/bundle/deb -name "*.deb" | head -1)
+          echo "path=$DEB" >> $GITHUB_OUTPUT
+          echo "name=$(basename $DEB)" >> $GITHUB_OUTPUT
+          echo "Found: $DEB"
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-deb
+          path: ${{ steps.find-deb.outputs.path }}
+          retention-days: 7
+
+  # ─────────────────────────────────────────────
+  # GitHub Release — attach both installers
+  # ─────────────────────────────────────────────
+  release:
+    name: 📦 Publish GitHub Release
+    needs: [build-windows, build-ubuntu]
+    runs-on: ubuntu-latest
+    # Only publish when both builds succeed
+    if: ${{ success() }}
+    steps:
+      - name: Checkout (for release notes template)
+        uses: actions/checkout@v4
+
+      - name: Download Windows NSIS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-nsis
+          path: release-files/
+
+      - name: Download Ubuntu .deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ubuntu-deb
+          path: release-files/
+
+      - name: List release files
+        run: ls -lh release-files/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-files/*
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') || contains(github.ref_name, '-rc') }}
+          body: |
+            ## PhantomMirror ${{ github.ref_name }}
+
+            ### 📥 Installers
+
+            | Platform | File | Notes |
+            |----------|------|-------|
+            | 🪟 Windows 10/11 | `*-setup.exe` | NSIS Setup Wizard |
+            | 🐧 Ubuntu 22.04+ | `*.deb` | `sudo dpkg -i phantom-mirror_*.deb` |
+
+            ### ⚠️ Windows SmartScreen
+            Vì installer chưa được ký số (code signing), Windows SmartScreen có thể hiện cảnh báo.
+            Nhấn **"More info" → "Run anyway"** để cài đặt bình thường.
+
+            ### 📋 Yêu cầu hệ thống
+            - **Android mirroring**: Cài [ADB (Android Platform Tools)](https://developer.android.com/tools/releases/platform-tools) và bật USB debugging
+            - **iOS mirroring**: UxPlay được bundle sẵn trong installer
+
+            ### 🔄 Thay đổi trong phiên bản này
