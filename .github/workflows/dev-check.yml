@@ -70,4 +70,3 @@ jobs:
 
       - name: Clippy lint
         run: cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml -- -D warnings
-        continue-on-error: true

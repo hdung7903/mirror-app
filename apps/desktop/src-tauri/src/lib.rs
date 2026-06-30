@@ -7,7 +7,7 @@ mod wifi_discovery;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .manage(ios_airplay::AirPlayRegistry::default())
+        .manage(ios_airplay::AirPlayRegistry)
         .manage(extended_display::ExtendedDisplayRegistry::default())
         .manage(stream_bridge::BridgeRegistry::default())
         .setup(|app| {

@@ -29,12 +29,6 @@ static IOS_SESSIONS: Lazy<Arc<Mutex<HashMap<String, IosSession>>>> =
 
 pub struct AirPlayRegistry;
 
-impl Default for AirPlayRegistry {
-    fn default() -> Self {
-        Self
-    }
-}
-
 struct IosSession {
     _session_id: String,
     _device_name: String,
