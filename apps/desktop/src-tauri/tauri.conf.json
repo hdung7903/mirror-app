@@ -46,15 +46,11 @@
       "nsis": {
         "displayLanguageSelector": false,
         "installMode": "perMachine",
-        "allowOverrideInstallMode": true,
-        "license": "../LICENSE",
-        "shortcutName": "PhantomMirror",
-        "createDesktopShortcut": true,
-        "createStartMenuShortcut": true,
         "installerIcon": "icons/icon.ico",
         "headerImage": "icons/nsis-header.bmp",
         "sidebarImage": "icons/nsis-sidebar.bmp",
-        "compression": "lzma"
+        "compression": "lzma",
+        "startMenuFolder": "PhantomMirror"
       }
     },
     "linux": {
