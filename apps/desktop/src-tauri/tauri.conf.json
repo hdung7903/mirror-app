@@ -63,9 +63,11 @@
         "compression": "lzma"
       }
     },
-    "deb": {
-      "section": "utils",
-      "priority": "optional"
+    "linux": {
+      "deb": {
+        "section": "utils",
+        "priority": "optional"
+      }
     }
   }
 }
