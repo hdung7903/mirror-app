@@ -9,11 +9,9 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const UPSTREAM_REPO = 'FDH2/UxPlay';
-const WINDOWS_REPO = 'leapbtw/uxplay-windows';
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = resolve(SCRIPT_DIR, '..', 'uxplay');
+const OUTPUT_DIR = resolve(SCRIPT_DIR, '..', 'uxplay', platformTargetDir());
 const OUTPUT_NAME = os.platform() === 'win32' ? 'uxplay.exe' : 'uxplay';
-const WINDOWS_APP_NAME = 'uxplay-windows.exe';
 const OUTPUT_PATH = resolve(OUTPUT_DIR, OUTPUT_NAME);
 
 await mkdir(OUTPUT_DIR, { recursive: true });
@@ -37,7 +35,7 @@ await download(asset.browser_download_url, tempPath);
 await installDownloadedAsset(tempPath, asset.name);
 const installedPath = await resolveInstalledBinary();
 if (!installedPath) {
-  throw new Error(`Downloaded package did not install ${OUTPUT_NAME} or ${WINDOWS_APP_NAME}.`);
+  throw new Error(`Downloaded package did not install ${OUTPUT_NAME}.`);
 }
 if (os.platform() !== 'win32') {
   await chmod(installedPath, 0o755);
@@ -46,7 +44,7 @@ console.log(`UxPlay saved to ${installedPath}`);
 console.log(`SHA256 ${await sha256(installedPath)}`);
 
 async function findReleaseWithAsset() {
-  const repos = os.platform() === 'win32' ? [WINDOWS_REPO, UPSTREAM_REPO] : [UPSTREAM_REPO];
+  const repos = [UPSTREAM_REPO];
   let lastRelease;
   for (const repo of repos) {
     const release = await githubJson(`https://api.github.com/repos/${repo}/releases/latest`);
@@ -109,9 +107,9 @@ async function installDownloadedAsset(downloadPath, assetName) {
     await rm(extractDir, { recursive: true, force: true });
     await mkdir(extractDir, { recursive: true });
     await powershell(['-NoProfile', '-Command', `Expand-Archive -LiteralPath '${downloadPath}' -DestinationPath '${extractDir}' -Force`]);
-    const binary = await findFile(extractDir, OUTPUT_NAME) ?? await findFile(extractDir, WINDOWS_APP_NAME);
+    const binary = await findFile(extractDir, OUTPUT_NAME);
     if (!binary) {
-      throw new Error(`Could not find ${OUTPUT_NAME} or ${WINDOWS_APP_NAME} inside ${assetName}.`);
+      throw new Error(`Could not find ${OUTPUT_NAME} inside ${assetName}.`);
     }
     await installExtractedPackage(extractDir);
     await rm(downloadPath, { force: true });
@@ -154,15 +152,31 @@ async function findFile(root, fileName) {
 }
 
 async function resolveInstalledBinary() {
-  for (const candidate of [OUTPUT_PATH, resolve(OUTPUT_DIR, WINDOWS_APP_NAME)]) {
-    try {
-      await access(candidate);
-      return candidate;
-    } catch {
-      // Try the next candidate.
-    }
+  try {
+    await access(OUTPUT_PATH);
+    return OUTPUT_PATH;
+  } catch {
+    return undefined;
   }
-  return undefined;
+}
+
+function platformTargetDir() {
+  const platformMap = {
+    win32: 'win32',
+    linux: 'linux',
+    darwin: 'darwin',
+  };
+  const archMap = {
+    x64: 'x64',
+    arm64: 'arm64',
+  };
+  const platform = platformMap[os.platform()];
+  const arch = archMap[os.arch()];
+  if (!platform || !arch) {
+    console.error(`Unsupported platform: ${os.platform()} ${os.arch()}`);
+    process.exit(1);
+  }
+  return `${platform}-${arch}`;
 }
 
 function powershell(args) {

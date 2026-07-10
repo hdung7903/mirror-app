@@ -39,7 +39,11 @@
     "shortDescription": "Multi-device phone screen mirroring for desktop",
     "longDescription": "PhantomMirror lets you mirror and control multiple Android devices and view iOS screens simultaneously on your PC or laptop. Connect via USB or WiFi.",
     "resources": {
-      "../../../tools/uxplay": "tools/uxplay",
+      "../../../tools/uxplay/win32-x64": "tools/uxplay/win32-x64",
+      "../../../tools/uxplay/linux-x64": "tools/uxplay/linux-x64",
+      "../../../tools/uxplay/linux-arm64": "tools/uxplay/linux-arm64",
+      "../../../tools/uxplay/darwin-x64": "tools/uxplay/darwin-x64",
+      "../../../tools/uxplay/darwin-arm64": "tools/uxplay/darwin-arm64",
       "../../../tools/scrcpy-server": "tools/scrcpy-server"
     },
     "windows": {

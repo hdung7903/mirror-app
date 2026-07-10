@@ -487,9 +487,11 @@ async fn bind_free_udp_port() -> Result<u16, String> {
 
 fn find_uxplay_binary(app: &AppHandle) -> Result<PathBuf, String> {
     let platform_dir = os_arch_dir();
-    // Ordered candidate names: standard name first, then platform-specific names
+    // Only accept the headless UxPlay CLI. The uxplay-windows GUI build is a
+    // separate tray app and can show Windows loader popups when its DLL set is
+    // not perfectly matched, so PhantomMirror must not probe or launch it.
     let exe_names: &[&str] = if cfg!(windows) {
-        &["uxplay.exe", "uxplay-windows.exe"]
+        &["uxplay.exe"]
     } else {
         &["uxplay"]
     };
@@ -498,15 +500,10 @@ fn find_uxplay_binary(app: &AppHandle) -> Result<PathBuf, String> {
         if let Ok(resource_dir) = app.path().resource_dir() {
             // With platform subdirectory (expected layout)
             candidates.push(resource_dir.join("tools").join("uxplay").join(platform_dir).join(exe));
-            // Flat layout (files directly in tools/uxplay/)
-            candidates.push(resource_dir.join("tools").join("uxplay").join(exe));
         }
         // With platform subdirectory
         candidates.push(workspace_path(["tools", "uxplay", platform_dir, exe]));
-        // Flat layout
-        candidates.push(workspace_path(["tools", "uxplay", exe]));
         candidates.push(PathBuf::from("tools").join("uxplay").join(platform_dir).join(exe));
-        candidates.push(PathBuf::from("tools").join("uxplay").join(exe));
 
         if let Some(path_binary) = find_on_path(exe) {
             candidates.push(path_binary);
@@ -517,7 +514,7 @@ fn find_uxplay_binary(app: &AppHandle) -> Result<PathBuf, String> {
         .into_iter()
         .find(|candidate| candidate.exists())
         .and_then(|candidate| candidate.canonicalize().ok())
-        .ok_or_else(|| format!("UxPlay headless binary not found for {platform_dir}. Place uxplay binary in tools/uxplay/ or tools/uxplay/{platform_dir}/."))
+        .ok_or_else(|| format!("UxPlay headless binary not found for {platform_dir}. Place the CLI binary in tools/uxplay/{platform_dir}/."))
 }
 
 fn find_on_path(exe: &str) -> Option<PathBuf> {
