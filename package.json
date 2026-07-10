@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "npm run dev --workspace @phantommirror/desktop",
     "build": "npm run build --workspace @phantommirror/desktop",
+    "bundle": "npm run bundle --workspace @phantommirror/desktop",
     "tauri": "npm run tauri --workspace @phantommirror/desktop",
     "typecheck": "npm run typecheck --workspace @phantommirror/desktop"
   },
