@@ -15,6 +15,7 @@ const TARGET = platformTarget();
 const OUTPUT_DIR = resolve(PROJECT_DIR, 'tools', 'uxplay', TARGET.dir);
 const OUTPUT_NAME = process.platform === 'win32' ? 'uxplay.exe' : 'uxplay';
 const OUTPUT_PATH = resolve(OUTPUT_DIR, OUTPUT_NAME);
+const REQUIRE_PREBUILT = process.env.REQUIRE_UXPLAY_PREBUILT === '1';
 
 await mkdir(OUTPUT_DIR, { recursive: true });
 
@@ -22,7 +23,11 @@ const release = await githubJson(`https://api.github.com/repos/${REPO}/releases/
 const asset = chooseAsset(release.assets ?? []);
 if (!asset) {
   printBuildFallback(release.assets ?? []);
-  process.exit(1);
+  if (REQUIRE_PREBUILT) {
+    process.exit(1);
+  }
+  console.warn('Skipping UxPlay prebuilt download; PhantomMirror will show the in-app install/build guidance for iOS mirroring.');
+  process.exit(0);
 }
 
 const tempPath = resolve(OUTPUT_DIR, `${asset.name}.download`);

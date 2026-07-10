@@ -10,7 +10,9 @@ const VERSION = 'v3.1';
 const DOWNLOAD_URL = `https://github.com/Genymobile/scrcpy/releases/download/${VERSION}/scrcpy-server-${VERSION}`;
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const OUTPUT_PATH = resolve(SCRIPT_DIR, '..', 'scrcpy-server', 'scrcpy-server.jar');
-const MIN_EXPECTED_BYTES = 100_000;
+// scrcpy-server is intentionally small. v3.1 is about 90 KiB, so keep this
+// guard low enough to reject HTML/error pages without rejecting valid releases.
+const MIN_EXPECTED_BYTES = 50_000;
 
 await mkdir(dirname(OUTPUT_PATH), { recursive: true });
 
